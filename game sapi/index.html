@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sapi Dino Game</title>
+    <style>
+        .alert {
+            padding: 20px;
+            background-color: #10c243;
+            color: white;
+            font-size: 18spx;
+            border-radius: 5px;
+            margin: 15px 0;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: slideIn 0.5s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .alert img {
+            width: 40px;
+            height: 40px;
+            margin-right: 10px;
+        }
+
+        .alert .closebtn {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 20px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .alert .closebtn:hover {
+            color: #f44336;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+
+        #gameArea {
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            position: relative;
+            background-color: #87CEEB;
+            overflow: hidden;
+        }
+
+        .animal {
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            bottom: 0;
+            left: 50px;
+            background-size: cover;
+            background-image: url('./asset/sapi.png');
+            background-position: center;
+        }
+
+        #obstacle {
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            bottom: 0;
+            right: -50px;
+            background-size: cover;
+            background-image: url('./asset/ayam.png');
+            background-position: center;
+            animation: moveObstacle 2s infinite linear;
+        }
+
+        #iceCream {
+            width: 40px;
+            height: 40px;
+            position: absolute;
+            bottom: 0;
+            right: -40px;
+            background-size: cover;
+            background-image: url('./asset/eskrim.png');
+            background-position: center;
+            animation: moveIceCream 5s infinite linear;
+        }
+
+        #score, #mood {
+            position: absolute;
+            top: 10px;
+            font-size: 24px;
+            color: #000;
+            font-weight: bold;
+        }
+
+        #score {
+            left: 10px;
+        }
+
+        #mood {
+            right: 10px;
+        }
+
+        @keyframes moveObstacle {
+            from {
+                right: -50px;
+            }
+            to {
+                right: 100%;
+            }
+        }
+
+        @keyframes moveIceCream {
+            from {
+                right: -40px;
+            }
+            to {
+                right: 100%;
+            }
+        }
+
+        #gameOverScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 36px;
+            color: red;
+            font-weight: bold;
+            display: none;
+            text-align: center;
+        }
+
+        #gameOverScreen button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #gameOverScreen button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameArea">
+        <div id="cow" class="animal"></div>
+        <div id="obstacle"></div>
+        <div id="iceCream"></div>
+        <div id="score">Score: 0</div>
+        <div id="mood">Mood: 3</div> <!-- Changed Lives to Mood -->
+        <div id="gameOverScreen">
+            Game Over! <br>
+            <button onclick="restartGame()">Restart</button>
+        </div>
+    </div>
+
+    <script>
+        const cow = document.getElementById('cow');
+        const obstacle = document.getElementById('obstacle');
+        const iceCream = document.getElementById('iceCream');
+        const scoreElement = document.getElementById('score');
+        const moodElement = document.getElementById('mood'); // Updated from livesElement
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        let isJumping = false;
+        let score = 0;
+        let mood = 3; // Changed from lives
+        let obstacleSpeed = 2;
+        let gameOver = false;
+        let gameStarted = false;
+
+        function playSound() {
+            var audio = new Audio("asset/SAPI.MP3");
+            audio.play().catch((error) => console.error("Error memutar suara:", error));
+        }
+
+        function playGameOverSound() {
+            var audio = new Audio("asset/kalah.mp3");
+            audio.play().catch((error) => console.error("Error memutar suara kalah:", error));
+        }
+
+        function updateMoodDisplay() {
+            moodElement.innerText = `Mood: ${mood}`; // Updated display from Lives to Mood
+        }
+
+        document.addEventListener('touchstart', () => {
+            if (!isJumping && !gameOver) {
+                jump();
+                gameStarted = true;
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === " " && !isJumping && !gameOver) {
+                jump();
+                gameStarted = true;
+            }
+        });
+
+        function jump() {
+            isJumping = true;
+            let jumpHeight = 0;
+            playSound();
+            let jumpInterval = setInterval(() => {
+                if (jumpHeight >= 100) {
+                    clearInterval(jumpInterval);
+                    let fallInterval = setInterval(() => {
+                        if (jumpHeight <= 0) {
+                            clearInterval(fallInterval);
+                            isJumping = false;
+                        }
+                        jumpHeight -= 5;
+                        cow.style.bottom = `${jumpHeight}px`;
+                    }, 25);
+                }
+                jumpHeight += 10;
+                cow.style.bottom = `${jumpHeight}px`;
+            }, 20);
+        }
+
+        let hasCollided = false;
+
+        function checkCollision() {
+            if (!gameStarted || gameOver) return;
+
+            let cowRect = cow.getBoundingClientRect();
+            let obstacleRect = obstacle.getBoundingClientRect();
+            let iceCreamRect = iceCream.getBoundingClientRect();
+
+            // Check collision with the obstacle
+            if (obstacleRect.right > 0 && obstacleRect.left < window.innerWidth) {
+                if (cowRect.left < obstacleRect.right && cowRect.right > obstacleRect.left &&
+                    cowRect.bottom > obstacleRect.top && cowRect.top < obstacleRect.bottom) {
+
+                    if (!hasCollided && mood > 0) { // Check mood instead of lives
+                        hasCollided = true;
+                        mood--; // Decrease mood instead of lives
+                        updateMoodDisplay();
+                        obstacle.style.right = '-50px';
+
+                        if (mood === 0) {
+                            gameOver = true;
+                            playGameOverSound();
+                            gameOverScreen.style.display = 'block';
+                            obstacle.style.animationPlayState = 'paused';
+                        }
+                    }
+                }
+            }
+
+             // Check collision with the ice cream
+             if (iceCreamRect.right > 0 && iceCreamRect.left < window.innerWidth) {
+                if (
+                    cowRect.left < iceCreamRect.right &&
+                    cowRect.right > iceCreamRect.left &&
+                    cowRect.bottom > iceCreamRect.top &&
+                    cowRect.top < iceCreamRect.bottom
+                ) {
+                    mood++; // Increase mood instead of lives
+                    updateMoodDisplay();
+                    iceCream.style.display = 'none';
+                    setTimeout(() => respawnIceCream(), 3000);
+                }
+            }
+            if (hasCollided) {
+                if (cowRect.right < obstacleRect.left || cowRect.left > obstacleRect.right || cowRect.bottom < obstacleRect.top) {
+                    hasCollided = false;
+                }
+            }
+        }
+
+        function updateScore() {
+            if (!gameStarted) return;
+
+            let obstacleRect = obstacle.getBoundingClientRect();
+            let cowRect = cow.getBoundingClientRect();
+
+            if (obstacleRect.right <= cowRect.left && !obstacle.hasAttribute('passed')) {
+                score++;
+                scoreElement.innerText = `Score: ${score}`;
+                obstacle.setAttribute('passed', true);
+                increaseObstacleSpeed();
+            } else if (obstacleRect.right > cowRect.left) {
+                obstacle.removeAttribute('passed');
+            }
+        }
+
+        function increaseObstacleSpeed() {
+            if (score % 5 === 0) {
+                obstacleSpeed = Math.max(0.5, obstacleSpeed - 0.2);
+                obstacle.style.animationDuration = `${obstacleSpeed}s`;
+            }
+        }
+
+        function moveObstacle() {
+            let obstacleRect = obstacle.getBoundingClientRect();
+
+            if (obstacleRect.right <= 0) {
+                obstacle.style.right = '-50px';
+            }
+        }
+
+        function moveIceCream() {
+            const iceCreamRect = iceCream.getBoundingClientRect();
+
+            if (iceCreamRect.right <= 0) {
+                respawnIceCream();
+            }
+        }
+
+        function respawnIceCream() {
+            const cowRect = cow.getBoundingClientRect();
+            const gameAreaRect = document.getElementById('gameArea').getBoundingClientRect();
+            const cowHeightFromGameAreaTop = cowRect.bottom - gameAreaRect.top;
+        
+            iceCream.style.top = `${cowHeightFromGameAreaTop - iceCream.offsetHeight / 2}px`; // Align ice cream vertically with cow
+            iceCream.style.right = '10px';
+            iceCream.style.display = 'block';
+        }
+
+        const gameInterval = setInterval(() => {
+            if (!gameOver) {
+                checkCollision();
+                updateScore();
+                moveIceCream();
+            } else {
+                clearInterval(gameInterval);
+                showAlert('Es krim matcha membantu sapi menaikan mood, menghadapi ayam emang bikin betmut', './asset/eskrim.png');
+            }
+        }, 10);
+
+        function showAlert(message, imageSrc) {
+            const alert = document.createElement('div');
+            alert.classList.add('alert');
+
+            const img = document.createElement('img');
+            img.src = imageSrc;
+
+            const text = document.createElement('span');
+            text.innerHTML = message;
+
+            const closeBtn = document.createElement('span');
+            closeBtn.classList.add('closebtn');
+            closeBtn.innerHTML = '&times;';
+            closeBtn.onclick = function() {
+                alert.style.display = 'none';
+            };
+
+            alert.appendChild(img);
+            alert.appendChild(text);
+            alert.appendChild(closeBtn);
+
+            document.body.appendChild(alert);
+        }
+
+        function restartGame() {
+            location.reload();
+        }
+
+        updateMoodDisplay(); // Updated from updateLivesDisplay
+    </script>
+</body>
+</html>

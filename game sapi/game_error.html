@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sapi Dino Game</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+
+        #gameArea {
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            position: relative;
+            background-color: #87CEEB;
+            overflow: hidden;
+        }
+
+        .animal {
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            bottom: 0;
+            left: 50px;
+            background-size: cover;
+            background-image: url('./asset/sapi.png');
+            background-position: center;
+        }
+
+        #obstacle {
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            bottom: 0;
+            right: -50px;
+            background-size: cover;
+            background-image: url('./asset/ayam.png');
+            background-position: center;
+            animation: moveObstacle 2s infinite linear;
+        }
+
+        @keyframes moveObstacle {
+            from {
+                right: -50px;
+            }
+            to {
+                right: 100%;
+            }
+        }
+
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 24px;
+            color: #000;
+            font-weight: bold;
+        }
+
+        /* Custom Game Over Modal */
+        #gameOverModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modalContent {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 24px;
+            color: #000;
+        }
+
+        .modalContent button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .modalContent button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameArea">
+        <div id="cow" class="animal"></div>
+        <div id="obstacle"></div>
+        <div id="score">Score: 0</div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="gameOverModal">
+        <div class="modalContent">
+            <p>Game Over!</p>
+            <p>Your Score: <span id="finalScore"></span></p>
+            <button onclick="restartGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        const cow = document.getElementById('cow');
+        const obstacle = document.getElementById('obstacle');
+        const scoreElement = document.getElementById('score');
+        const gameOverModal = document.getElementById('gameOverModal');
+        const finalScore = document.getElementById('finalScore');
+        let isJumping = false;
+        let score = 0;
+        let obstacleSpeed = 2;
+
+        function playSound() {
+            var audio = new Audio("asset/SAPI.MP3");
+            audio.play().catch((error) => console.error("Error memutar suara:", error));
+        }
+
+        function playGameOverSound() {
+            var audio = new Audio("asset/kalah.mp3");
+            audio.play().catch((error) => console.error("Error memutar suara kalah:", error));
+        }
+
+        document.addEventListener('touchstart', () => {
+            if (!isJumping) {
+                jump();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === " " && !isJumping) {
+                jump();
+            }
+        });
+
+        function jump() {
+            isJumping = true;
+            let jumpHeight = 0;
+            playSound();
+            let jumpInterval = setInterval(() => {
+                if (jumpHeight >= 100) {
+                    clearInterval(jumpInterval);
+                    let fallInterval = setInterval(() => {
+                        if (jumpHeight <= 0) {
+                            clearInterval(fallInterval);
+                            isJumping = false;
+                        }
+                        jumpHeight -= 5;
+                        cow.style.bottom = `${jumpHeight}px`;
+                    }, 25);
+                }
+                jumpHeight += 10;
+                cow.style.bottom = `${jumpHeight}px`;
+            }, 20);
+        }
+
+        function checkCollision() {
+            let cowRect = cow.getBoundingClientRect();
+            let obstacleRect = obstacle.getBoundingClientRect();
+
+            if (
+                cowRect.left < obstacleRect.right &&
+                cowRect.right > obstacleRect.left &&
+                cowRect.bottom > obstacleRect.top
+            ) {
+                playGameOverSound();
+                finalScore.innerText = score;
+                gameOverModal.style.display = "flex";
+            }
+        }
+
+        function updateScore() {
+            let obstacleRect = obstacle.getBoundingClientRect();
+            let cowRect = cow.getBoundingClientRect();
+
+            if (obstacleRect.right <= cowRect.left && !obstacle.hasAttribute('passed')) {
+                score++;
+                scoreElement.innerText = `Score: ${score}`;
+                obstacle.setAttribute('passed', true);
+                increaseObstacleSpeed();
+            } else if (obstacleRect.right > cowRect.left) {
+                obstacle.removeAttribute('passed');
+            }
+        }
+
+        function increaseObstacleSpeed() {
+            if (score % 5 === 0) {
+                obstacleSpeed = Math.max(0.5, obstacleSpeed - 0.2);
+                obstacle.style.animationDuration = `${obstacleSpeed}s`;
+            }
+        }
+
+        function resetObstacle() {
+            const randomDistance = Math.random() * 300 + 200; // Random distance between 200px and 500px
+            obstacle.style.right = `-${randomDistance}px`;
+            obstacle.removeAttribute('passed');
+        }
+
+        function moveObstacle() {
+            let obstacleRect = obstacle.getBoundingClientRect();
+            if (obstacleRect.right <= 0) {
+                resetObstacle();
+            }
+        }
+
+        function restartGame() {
+            score = 0;
+            scoreElement.innerText = "Score: 0";
+            obstacle.style.animationDuration = "2s";
+            gameOverModal.style.display = "none";
+            resetObstacle();
+        }
+
+        setInterval(() => {
+            checkCollision();
+            updateScore();
+            moveObstacle();
+        }, 10);
+    </script>
+</body>
+</html>
